@@ -1,6 +1,8 @@
 ﻿
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
+#include <strstream>
 #include <Windows.h>
 #include <cmath>
 #include <conio.h>
@@ -62,6 +64,42 @@ public:
 	model(const vector<triangle> tri)
 	{
 		triangles = tri;
+	}
+	model(){}
+	bool Load_From_File(string fname) 
+	{
+		ifstream file(fname);
+		if (!file.is_open())
+		{
+			return false;
+		}
+
+		vector<point> v;
+
+		while (!file.eof()) 
+		{
+			char line[128];
+			file.getline(line, 128);
+			strstream s;
+			s << line;
+			char determin;
+
+			if (line[0] == 'v') 
+			{
+				point p;
+				s >> determin >> p.x >> p.y >> p.z;
+				v.push_back(p);
+			}
+
+			if (line[0] == 'f') 
+			{
+				int f[3];
+				s >> determin >> f[0] >> f[1] >> f[2];
+				triangles.push_back({ v[f[0] - 1],v[f[1] - 1],v[f[2] - 1] });
+			}
+		}
+
+		return true;
 	}
 };
 
@@ -182,7 +220,7 @@ int main()
 	chrono::duration<float> elapsedt;
 	int x = 70;
 	int y = 10;
-	model cube = { {
+	model cube; /*= { {
 		{{0,1,0},{1,0,0},{0,0,0}},
 		{{0,1,0},{1,1,0},{1,0,0}},
 		{{0,1,1},{0,1,0},{0,0,0}},
@@ -195,7 +233,8 @@ int main()
 		{{1,1,1},{0,0,1},{1,0,1}},
 		{{0,1,1},{1,1,0},{0,1,0}},
 		{{0,1,1},{1,1,1},{1,1,0}}
-		} };
+		} };*/
+	cube.Load_From_File("test.obj");
 	while (1) 
 	{
 		t2 = chrono::system_clock::now();
@@ -233,9 +272,9 @@ int main()
 			MatrMult(triRotZ.p3, triRotZX.p3, RotX);
 
 			triTransl = triRotZX;
-			triTransl.p1.z = triRotZX.p1.z + 3.0;
-			triTransl.p2.z = triRotZX.p2.z + 3.0;
-			triTransl.p3.z = triRotZX.p3.z + 3.0;
+			triTransl.p1.z = triRotZX.p1.z + 5.0;
+			triTransl.p2.z = triRotZX.p2.z + 5.0;
+			triTransl.p3.z = triRotZX.p3.z + 5.0;
 
 			point normal, A, B;
 			A.x = triTransl.p2.x - triTransl.p1.x;
