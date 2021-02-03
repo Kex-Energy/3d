@@ -1,4 +1,5 @@
 ﻿
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
@@ -17,9 +18,7 @@ int const nScreenWidth = 120;				// Console Screen Size X (columns)
 int const nScreenHeight = 120;				// Console Screen Size Y (rows)
 
 
-void DrawPixel(int x, int y, unsigned short color, wchar_t* screen, unsigned short* color_screen);
-void DrawLine(int x0, int y0, int x1, int y1, int color, wchar_t* screen, unsigned short* color_screen);
-void DrawTriangle(int x0, int y0, int x1, int y1, int x2, int y2, int color, wchar_t* screen, unsigned short* color_screen);
+
 
 class point 
 {
@@ -103,6 +102,11 @@ public:
 	}
 };
 
+void DrawPixel(int x, int y, unsigned short color, wchar_t* screen, unsigned short* color_screen);
+void DrawLine(int x0, int y0, int x1, int y1, int color, wchar_t* screen, unsigned short* color_screen);
+void DrawTriangle(triangle tri, int color, wchar_t* screen, unsigned short* color_screen);
+void FillTriangle(triangle tri, int color, wchar_t* screen, unsigned short* color_screen);
+
 void MatrMult(point& i, point& o, double matr[][4])
 {
 	o.x = i.x * matr[0][0] + i.y * matr[1][0] + i.z * matr[2][0] + matr[3][0];
@@ -122,14 +126,15 @@ void DrawPixel(int x, int y, unsigned short color, wchar_t* screen, unsigned sho
 {
 	if (x >= 0 && x < nScreenWidth && y >= 0 && y < nScreenHeight) 
 	{
-		screen[y * nScreenWidth + x] = L'█';
+		//screen[y * nScreenWidth + x] = L'█';
 		color_screen[y * nScreenWidth + x] = color;
 	}
 }
 
 void DrawLine(int x0, int y0, int x1, int y1, int color, wchar_t* screen, unsigned short* color_screen)
 {
-	double a = abs(((double)y1 - (double)y0) / ((double)x1 - (double)x0));
+	double a=0;
+	a = abs(((double)y1 - (double)y0) / ((double)x1 - (double)x0));
 	double d;
 	int incr_x = x0 < x1 ? 1 : -1;
 	int incr_y = y0 < y1 ? 1 : -1;
@@ -155,11 +160,49 @@ void DrawLine(int x0, int y0, int x1, int y1, int color, wchar_t* screen, unsign
 	}
 }
 
-void DrawTriangle(int x0, int y0, int x1, int y1, int x2, int y2, int color, wchar_t* screen, unsigned short* color_screen)
+void DrawTriangle(triangle tri, int color, wchar_t* screen, unsigned short* color_screen)
 {
-	DrawLine(x0, y0, x1, y1, color, screen, color_screen);
-	DrawLine(x1, y1, x2, y2, color, screen, color_screen);
-	DrawLine(x2, y2, x0, y0, color, screen, color_screen);
+	DrawLine(tri.p1.x, tri.p1.y, tri.p2.x, tri.p2.y, color, screen, color_screen);
+	DrawLine(tri.p2.x, tri.p2.y, tri.p3.x, tri.p3.y, color, screen, color_screen);
+	DrawLine(tri.p3.x, tri.p3.y, tri.p1.x, tri.p1.y, color, screen, color_screen);
+}
+
+void FillTriangle(triangle tri, int color, wchar_t* screen, unsigned short* color_screen)
+{
+	int x0 = (int)tri.p1.x, x1 = (int)tri.p2.x, x2 = (int)tri.p3.x;
+	int y0 = (int)tri.p1.y, y1 = (int)tri.p2.y, y2 = (int)tri.p3.y;
+
+	if (y0 > y1) { swap(y0, y1); swap(x0, x1); }
+	if (y1 > y2) { swap(y1, y2); swap(x1, x2); }
+	if (y0 > y1) { swap(y0, y1); swap(x0, x1); }
+
+	double a01 = 0, a02 = 0, a12 = 0;
+
+	if (y0 != y1) a01 = ((double)x1 - (double)x0) / ((double)y1 - (double)y0);
+	if (y1 != y2) a12 = ((double)x2 - (double)x1) / ((double)y2 - (double)y1);
+	if (y0 != y2) a02 = ((double)x2 - (double)x0) / ((double)y2 - (double)y0);
+
+	double b01 = -a01 * y0 + x0, b12 = -a12 * y1 + x1, b02 = -a02 * y0 + x0;
+
+	double x_01, x_02;
+	
+
+	for (int line = y0; line != y2; line++) 
+	{
+		x_02 = a02 * line + b02;
+		if (line < y1)
+			x_01 = a01*line+b01;
+		else
+			x_01 = a12 * line + b12;
+
+		int incr = x_02 > x_01 ? 1 : -1;
+
+		for (int x = (int)x_01; x != (int)x_02;x += incr) 
+		{
+			DrawPixel(x, line, color, screen, color_screen);
+		}
+	}
+
 }
 
 
@@ -257,7 +300,6 @@ int main()
 		RotX[2][2] = cos(dteta * 0.5);
 		RotX[3][3] = 1;
 
-
 		for (auto tri : cube.triangles)
 		{
 			
@@ -309,7 +351,8 @@ int main()
 				triProj.p2.x *= 0.5 * (double)nScreenWidth; triProj.p2.y *= 0.5 * (double)nScreenHeight;
 				triProj.p3.x *= 0.5 * (double)nScreenWidth; triProj.p3.y *= 0.5 * (double)nScreenHeight;
 
-				DrawTriangle(triProj.p1.x, triProj.p1.y, triProj.p2.x, triProj.p2.y, triProj.p3.x, triProj.p3.y, 0xFF, screen, color);
+				FillTriangle(triProj, 0x50, screen, color);
+				DrawTriangle(triProj, 0xF0, screen, color);
 			}
 
 		}
@@ -322,7 +365,7 @@ int main()
 		WriteConsoleOutputCharacterW(hConsole, screen, nScreenWidth*nScreenHeight, { 0,0 }, &dwBytesWritten);
 		for (int i = 0; i < nScreenWidth * nScreenHeight; i++)
 		{
-			color[i] = 0x0F;
+			color[i] = 0x00;
 			screen[i] = L' ';
 		}
 	}
