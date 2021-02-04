@@ -5,6 +5,7 @@
 #include <fstream>
 #include <strstream>
 #include <Windows.h>
+#include <wincontypes.h>
 #include <cmath>
 #include <conio.h>
 #include <chrono>
@@ -102,10 +103,10 @@ public:
 	}
 };
 
-void DrawPixel(int x, int y, unsigned short color, wchar_t* screen, unsigned short* color_screen);
-void DrawLine(int x0, int y0, int x1, int y1, int color, wchar_t* screen, unsigned short* color_screen);
-void DrawTriangle(triangle tri, int color, wchar_t* screen, unsigned short* color_screen);
-void FillTriangle(triangle tri, int color, wchar_t* screen, unsigned short* color_screen);
+void DrawPixel(int x, int y, unsigned short color, _CHAR_INFO* screen);
+void DrawLine(int x0, int y0, int x1, int y1, int color, _CHAR_INFO* screen);
+void DrawTriangle(triangle tri, int color, _CHAR_INFO* screen);
+void FillTriangle(triangle tri, int color, _CHAR_INFO* screen);
 
 void MatrMult(point& i, point& o, double matr[][4])
 {
@@ -122,16 +123,16 @@ void MatrMult(point& i, point& o, double matr[][4])
 	}
 }
 
-void DrawPixel(int x, int y, unsigned short color, wchar_t* screen, unsigned short* color_screen)
+void DrawPixel(int x, int y, unsigned short color, _CHAR_INFO* screen)
 {
 	if (x >= 0 && x < nScreenWidth && y >= 0 && y < nScreenHeight) 
 	{
-		//screen[y * nScreenWidth + x] = L'█';
-		color_screen[y * nScreenWidth + x] = color;
+		//screen[y * nScreenWidth + x].Char.UnicodeChar = L'█';
+		screen[y * nScreenWidth + x].Attributes = color;
 	}
 }
 
-void DrawLine(int x0, int y0, int x1, int y1, int color, wchar_t* screen, unsigned short* color_screen)
+void DrawLine(int x0, int y0, int x1, int y1, int color, _CHAR_INFO* screen)
 {
 	double a=0;
 	a = abs(((double)y1 - (double)y0) / ((double)x1 - (double)x0));
@@ -143,7 +144,7 @@ void DrawLine(int x0, int y0, int x1, int y1, int color, wchar_t* screen, unsign
 		d = y0;
 		for (int i = x0; i != x1; i += incr_x) 
 		{
-			DrawPixel(i, round(d), color, screen, color_screen);
+			DrawPixel(i, round(d), color, screen);
 			d += a*incr_y;
 		}
 	}
@@ -154,20 +155,20 @@ void DrawLine(int x0, int y0, int x1, int y1, int color, wchar_t* screen, unsign
 		a = 1.0 / a;
 		for (int i = y0; i != y1; i += incr_y)
 		{
-			DrawPixel(round(d), i, color, screen, color_screen);
+			DrawPixel(round(d), i, color, screen);
 			d += a*incr_x;
 		}
 	}
 }
 
-void DrawTriangle(triangle tri, int color, wchar_t* screen, unsigned short* color_screen)
+void DrawTriangle(triangle tri, int color, _CHAR_INFO* screen)
 {
-	DrawLine(tri.p1.x, tri.p1.y, tri.p2.x, tri.p2.y, color, screen, color_screen);
-	DrawLine(tri.p2.x, tri.p2.y, tri.p3.x, tri.p3.y, color, screen, color_screen);
-	DrawLine(tri.p3.x, tri.p3.y, tri.p1.x, tri.p1.y, color, screen, color_screen);
+	DrawLine(tri.p1.x, tri.p1.y, tri.p2.x, tri.p2.y, color, screen);
+	DrawLine(tri.p2.x, tri.p2.y, tri.p3.x, tri.p3.y, color, screen);
+	DrawLine(tri.p3.x, tri.p3.y, tri.p1.x, tri.p1.y, color, screen);
 }
 
-void FillTriangle(triangle tri, int color, wchar_t* screen, unsigned short* color_screen)
+void FillTriangle(triangle tri, int color, _CHAR_INFO* screen)
 {
 	int x0 = (int)tri.p1.x, x1 = (int)tri.p2.x, x2 = (int)tri.p3.x;
 	int y0 = (int)tri.p1.y, y1 = (int)tri.p2.y, y2 = (int)tri.p3.y;
@@ -199,7 +200,7 @@ void FillTriangle(triangle tri, int color, wchar_t* screen, unsigned short* colo
 
 		for (int x = (int)x_01; x != (int)x_02;x += incr) 
 		{
-			DrawPixel(x, line, color, screen, color_screen);
+			DrawPixel(x, line, color, screen);
 		}
 	}
 
@@ -213,12 +214,12 @@ int main()
 
 
 	//настройка консоли
-	wchar_t* screen = new wchar_t[(int)nScreenWidth * (int)nScreenHeight];
-	unsigned short* color = new unsigned short[nScreenWidth * nScreenHeight];
+	_CHAR_INFO* screen = new _CHAR_INFO[(int)nScreenWidth * (int)nScreenHeight];
+
 	for (int i = 0; i < nScreenWidth * nScreenHeight; i++)
 	{
-		color[i] = 0xF0;
-		screen[i] = L' ';
+		screen[i].Attributes = 0x0000;
+		screen[i].Char.UnicodeChar = L' ';
 	}
 	HANDLE hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 	SetConsoleActiveScreenBuffer(hConsole);
@@ -228,7 +229,9 @@ int main()
 	font.dwFontSize = { 5,5 };
 	font.cbSize = sizeof(font);
 	SetCurrentConsoleFontEx(hConsole, false, &font);
-	DWORD dwBytesWritten = 0;
+	SMALL_RECT rectWindow;
+	rectWindow = { 0,0,(short)nScreenWidth - 1,(short)nScreenHeight - 1 };
+	SetConsoleWindowInfo(hConsole, true, &rectWindow);
 	wchar_t fps_string[10];
 	
 	//-------------------------------------------
@@ -300,7 +303,9 @@ int main()
 		RotX[2][2] = cos(dteta * 0.5);
 		RotX[3][3] = 1;
 
-		for (auto tri : cube.triangles)
+		vector<triangle> TranslTri;
+
+		for (auto& tri : cube.triangles)
 		{
 			
 			triangle triProj, triTransl, triRotZ, triRotZX;
@@ -351,8 +356,19 @@ int main()
 				triProj.p2.x *= 0.5 * (double)nScreenWidth; triProj.p2.y *= 0.5 * (double)nScreenHeight;
 				triProj.p3.x *= 0.5 * (double)nScreenWidth; triProj.p3.y *= 0.5 * (double)nScreenHeight;
 
-				FillTriangle(triProj, 0x50, screen, color);
-				DrawTriangle(triProj, 0xF0, screen, color);
+				TranslTri.push_back(triProj);
+
+			}
+
+			sort(TranslTri.begin(), TranslTri.end(), [](triangle& t1, triangle& t2) 
+				{
+					return (t1.p1.z + t1.p2.z + t1.p3.z) / 3.0 > (t2.p1.z + t2.p2.z + t2.p3.z) / 3.0;
+				});
+
+			for (auto &tri : TranslTri) 
+			{
+				FillTriangle(tri, 0x0050, screen);
+				DrawTriangle(tri, 0x00F0, screen);
 			}
 
 		}
@@ -361,12 +377,11 @@ int main()
 		fps = (1.0 / dt);
 		swprintf_s(fps_string, 9, L"Fps:%4.0f", fps);
 		SetConsoleTitle(fps_string);
-		WriteConsoleOutputAttribute(hConsole, color, nScreenWidth * nScreenHeight, { 0,0 }, &dwBytesWritten);
-		WriteConsoleOutputCharacterW(hConsole, screen, nScreenWidth*nScreenHeight, { 0,0 }, &dwBytesWritten);
+		WriteConsoleOutputW(hConsole, screen, { nScreenWidth, nScreenHeight }, { 0,0 }, &rectWindow);
 		for (int i = 0; i < nScreenWidth * nScreenHeight; i++)
 		{
-			color[i] = 0x00;
-			screen[i] = L' ';
+			screen[i].Attributes = 0x0000;
+			screen[i].Char.UnicodeChar = L' ';
 		}
 	}
 	
