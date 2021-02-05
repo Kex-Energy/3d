@@ -179,29 +179,32 @@ void FillTriangle(triangle tri, int color, _CHAR_INFO* screen)
 
 	double a01 = 0, a02 = 0, a12 = 0;
 
-	if (y0 != y1) a01 = ((double)x1 - (double)x0) / ((double)y1 - (double)y0);
-	if (y1 != y2) a12 = ((double)x2 - (double)x1) / ((double)y2 - (double)y1);
-	if (y0 != y2) a02 = ((double)x2 - (double)x0) / ((double)y2 - (double)y0);
+	a01 = ((double)x1 - (double)x0) / ((double)y1 - (double)y0);
+	a12 = ((double)x2 - (double)x1) / ((double)y2 - (double)y1);
+	a02 = ((double)x2 - (double)x0) / ((double)y2 - (double)y0);
 
-	double b01 = -a01 * y0 + x0, b12 = -a12 * y1 + x1, b02 = -a02 * y0 + x0;
+	double x_01, x_02 = x0;
 
-	double x_01, x_02;
-	
+	if (y0 == y1)
+		x_01 = x1;
+	else
+		x_01 = x0;
 
 	for (int line = y0; line != y2; line++) 
 	{
-		x_02 = a02 * line + b02;
-		if (line < y1)
-			x_01 = a01*line+b01;
-		else
-			x_01 = a12 * line + b12;
 
 		int incr = x_02 > x_01 ? 1 : -1;
 
-		for (int x = (int)x_01; x != (int)x_02;x += incr) 
+		for (int x = (int)round(x_01); x != (int)round(x_02);x += incr) 
 		{
 			DrawPixel(x, line, color, screen);
 		}
+
+		x_02 += a02;
+		if (line < y1)
+			x_01 += a01;
+		else
+			x_01 += a12;
 	}
 
 }
