@@ -142,22 +142,24 @@ void DrawLine(int x0, int y0, int x1, int y1, int color, _CHAR_INFO* screen)
 	if (a <= 1) {
 		
 		d = y0;
-		for (int i = x0; i != x1; i += incr_x) 
-		{
+		int i = x0;
+		do {
 			DrawPixel(i, round(d), color, screen);
-			d += a*incr_y;
-		}
+			d += a * incr_y;
+			i += incr_x;
+		} while (i != x1 && x0 != x1);
 	}
 	else
 	{
 		
 		d = x0;
 		a = 1.0 / a;
-		for (int i = y0; i != y1; i += incr_y)
-		{
+		int i = y0;
+		do {
 			DrawPixel(round(d), i, color, screen);
-			d += a*incr_x;
-		}
+			d += a * incr_x;
+			i += incr_y;
+		} while (i != y1 && y0 != y1);
 	}
 }
 
@@ -195,11 +197,14 @@ void FillTriangle(triangle tri, int color, _CHAR_INFO* screen)
 
 		int incr = x_02 > x_01 ? 1 : -1;
 
-		for (int x = (int)round(x_01); x != (int)round(x_02);x += incr) 
+		int x_01_int = (int)x_01, x_02_int = (int)x_02;
+
+		for (int x = x_01_int; x != x_02_int;x += incr)
 		{
 			DrawPixel(x, line, color, screen);
 		}
-
+		DrawPixel(x_01_int, line, color, screen);
+		DrawPixel(x_02_int, line, color, screen);
 		x_02 += a02;
 		if (line < y1)
 			x_01 += a01;
